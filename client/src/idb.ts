@@ -150,6 +150,18 @@ export async function deleteLink(url: string) {
   })
 }
 
+export async function clearLinks() {
+  const db = await openDB()
+
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_LINKS, 'readwrite')
+    const store = tx.objectStore(STORE_LINKS)
+    store.clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 export async function updateMetadata(
   url: string,
   metadata: Partial<Omit<SavedLink, 'url' | 'savedAt'>>

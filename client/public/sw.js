@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gripd-static-v2'
+const CACHE_NAME = 'gripd-static-v3'
 const ASSETS = [
   '/',
   '/index.html',
@@ -7,6 +7,7 @@ const ASSETS = [
 ]
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting()
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   )
@@ -26,15 +27,13 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(event.request).then((response) => {
-        if (response) return response
-
-        return fetch(event.request).then((networkResponse) => {
+      fetch(event.request)
+        .then((networkResponse) => {
           const copy = networkResponse.clone()
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
           return networkResponse
         })
-      })
+        .catch(() => caches.match(event.request).then((response) => response || caches.match('/index.html')))
     )
   }
 })

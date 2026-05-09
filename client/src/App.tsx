@@ -1,5 +1,5 @@
 import { FormEvent, PointerEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { deleteLink, listLinks, saveLink, SavedLink } from './idb'
+import { clearLinks, deleteLink, listLinks, saveLink, SavedLink } from './idb'
 import './styles.css'
 
 type InstallPromptEvent = Event & {
@@ -457,6 +457,7 @@ export default function App() {
   const [learningPack, setLearningPack] = useState<LearningPack>(() => emptyLearningPack())
   const [learningPacks, setLearningPacks] = useState<Record<string, LearningPack>>({})
   const [packLoading, setPackLoading] = useState(false)
+  const [loadingLinkTitle, setLoadingLinkTitle] = useState('')
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const [graphChallengeIndex, setGraphChallengeIndex] = useState(0)
   const [graphNodeStates, setGraphNodeStates] = useState<Record<string, 'success' | 'fail'>>({})
@@ -542,6 +543,7 @@ export default function App() {
     }
 
     setPackLoading(true)
+    setLoadingLinkTitle(link.title || link.url)
     const fallback = fallbackLearningPack(link)
 
     try {
@@ -562,6 +564,7 @@ export default function App() {
       setGraphNodeStates({})
       setGraphFeedback('Find the concept that answers the prompt.')
       setPackLoading(false)
+      setLoadingLinkTitle('')
     }
   }
 
@@ -620,6 +623,13 @@ export default function App() {
       tags: ['Learning'],
     } satisfies SavedLink
     setUrl('')
+    const empty = emptyLearningPack()
+    setLearningPack(empty)
+    setPodcastSegments(empty.podcastSegments)
+    setPaperResult(null)
+    setGraphNodeStates({})
+    setSelectedNode(null)
+    setLoadingLinkTitle(savedUrl)
     setMessage('Saved. Generating podcast, questions, graph, and build checks from the link.')
     addXp(8, 'concepts')
     setActiveLink(inferredLink)
@@ -631,6 +641,22 @@ export default function App() {
     await deleteLink(linkUrl)
     setMessage('Removed from tomorrow ride queue.')
     await refresh()
+  }
+
+  async function resetDemoState() {
+    await clearLinks()
+    localStorage.removeItem(STORAGE_KEY)
+    const empty = emptyLearningPack()
+    setLinks([])
+    setActiveLink(null)
+    setProgress({ xp: 0, streak: 0, systems: 0, research: 0, concepts: 0, voice: 0 })
+    setLearningPack(empty)
+    setPodcastSegments(empty.podcastSegments)
+    setLearningPacks({})
+    setSelectedNode(null)
+    setGraphNodeStates({})
+    setGraphFeedback('Find the concept that answers the prompt.')
+    setMessage('Reset complete. Paste a link to begin.')
   }
 
   async function startVoiceHype() {
@@ -817,6 +843,7 @@ export default function App() {
         </div>
         <div className="header-actions">
           <span>{isOnline ? 'Live' : 'Tunnel'}</span>
+          <button className="mini-button" onClick={resetDemoState}>Reset</button>
           {installPrompt && <button onClick={installApp}>Install</button>}
         </div>
       </header>
@@ -862,7 +889,9 @@ export default function App() {
       </section>
 
       <section className="mode-surface">
-        {activeMode === 'voice' && (
+        {packLoading ? (
+          <LoadingMascot title={loadingLinkTitle} />
+        ) : activeMode === 'voice' && (
           <VoiceMode
             activeLink={activeLink || emptyLink}
             links={availableLinks}
@@ -879,7 +908,7 @@ export default function App() {
           />
         )}
 
-        {activeMode === 'papers' && (
+        {!packLoading && activeMode === 'papers' && (
           hasLearningPack ? (
             <PaperMode
               paper={currentPaper}
@@ -898,7 +927,7 @@ export default function App() {
           )
         )}
 
-        {activeMode === 'graph' && (
+        {!packLoading && activeMode === 'graph' && (
           hasLearningPack && selectedNode ? (
             <GraphMode
               selectedNode={selectedNode}
@@ -914,7 +943,7 @@ export default function App() {
           )
         )}
 
-        {activeMode === 'systems' && (
+        {!packLoading && activeMode === 'systems' && (
           <SystemMode
             placed={placed}
             feedback={systemFeedback}
@@ -964,6 +993,35 @@ export default function App() {
         </span>
       ))}
     </main>
+  )
+}
+
+function LoadingMascot({ title }: { title: string }) {
+  return (
+    <article className="loading-mascot-card" aria-live="polite">
+      <div className="mascot-scene" aria-hidden="true">
+        <div className="mascot">
+          <span className="mascot-hair" />
+          <span className="mascot-glasses left" />
+          <span className="mascot-glasses right" />
+          <span className="mascot-eye left" />
+          <span className="mascot-eye right" />
+          <span className="mascot-mouth" />
+          <span className="mascot-laptop">π</span>
+        </div>
+        <span className="fetch-orbit one">Exa</span>
+        <span className="fetch-orbit two">AI</span>
+        <span className="fetch-orbit three">XP</span>
+      </div>
+      <span className="eyebrow">Fetching paper details</span>
+      <h2>Nerd mascot is reading it for you</h2>
+      <p>{title ? `Building a podcast, questions, graph, and system challenge from ${title}.` : 'Building your commute session.'}</p>
+      <div className="loading-steps">
+        <span>Exa fetch</span>
+        <span>OpenAI summary</span>
+        <span>Games</span>
+      </div>
+    </article>
   )
 }
 
