@@ -1,0 +1,19 @@
+{
+  "name": "Gripd.",
+  "short_name": "Gripd",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "description": "One-handed, voice-native learning games for your MRT commute.",
+  "background_color": "#f6f4ee",
+  "theme_color": "#171717",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
