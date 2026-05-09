@@ -61,7 +61,7 @@ The UI is designed around phone screens, iPhone simulator testing, one-thumb con
 | Exa.ai | Fetching/enriching paper content from pasted links | Wired through the local Vite API when `EXA_API_KEY` is set |
 | OpenAI / GPT | Quick summary, podcast script, swipe questions, graph data, build prompt | Wired through the local Vite API when `OPENAI_API_KEY` or `OPEN_AI_API_KEY` is set |
 | ElevenLabs | Host and analyst voice playback with cloned voices | Wired through the local Vite proxy when `ELEVENLABS_API_KEY` or `ELEVEN_LABS_API_KEY` is set |
-| Gemini | Voice-agent direction from the PRD and future live conversation mode | Planned / pitch-track integration |
+| Gemini | Mascot image generation, plus voice-agent direction from the PRD and future live conversation mode | Mascot used in the app / live voice planned |
 | Codex | Repo implementation, iteration, debugging, README, and mobile polish | Used during development |
 | React + Vite | Mobile PWA frontend and local API middleware | Current app shell |
 | IndexedDB | Saved links and local commute state | Current local persistence |
@@ -194,6 +194,7 @@ If audio does not play on iPhone Safari, tap once anywhere in the app before swi
 - The app starts empty by design. It should generate content only after you paste a link.
 - If old demo data appears, press `Reset` in the app or clear Safari site data for localhost.
 - For the best phone demo, use iPhone 13 or iPhone 14 dimensions in Simulator.
+- The mascot image was generated with Gemini and is used as the cute loading companion.
 - Do not commit real API keys.
 
 ---
