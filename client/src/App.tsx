@@ -476,7 +476,7 @@ async function playElevenLabsPodcast(segments: PodcastSegment[]) {
 
   for (const segment of segments) {
     const voiceId = segment.speaker === 'Host' ? hostVoiceId : analystVoiceId
-    const response = await fetch(`/elevenlabs/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
+    const response = await fetch(`/api/elevenlabs/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

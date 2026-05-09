@@ -566,6 +566,14 @@ function elevenLabsProxy(key: string | undefined) {
   if (!key) return undefined
 
   return {
+    '/api/elevenlabs': {
+      target: 'https://api.elevenlabs.io',
+      changeOrigin: true,
+      rewrite: (path: string) => path.replace(/^\/api\/elevenlabs/, '/v1'),
+      headers: {
+        'xi-api-key': key,
+      },
+    },
     '/elevenlabs': {
       target: 'https://api.elevenlabs.io',
       changeOrigin: true,
