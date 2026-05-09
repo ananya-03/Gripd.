@@ -51,6 +51,8 @@ declare global {
   }
 }
 
+let sharedAudioContext: AudioContext | null = null
+
 type GraphNode = {
   id: string
   label: string
@@ -337,37 +339,104 @@ async function fetchLearningPack(link: SavedLink): Promise<LearningPack> {
   return response.json()
 }
 
-function playResultSound(tone: 'success' | 'fail') {
+function getAudioContext() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext
-  if (!AudioContextClass) return
+  if (!AudioContextClass) return null
 
-  const audio = new AudioContextClass()
+  sharedAudioContext ||= new AudioContextClass()
+  if (sharedAudioContext.state === 'suspended') void sharedAudioContext.resume()
+  return sharedAudioContext
+}
+
+function unlockAudio() {
+  const audio = getAudioContext()
+  if (!audio) return
+
+  const gain = audio.createGain()
+  const oscillator = audio.createOscillator()
+  gain.gain.setValueAtTime(0.0001, audio.currentTime)
+  oscillator.connect(gain)
+  gain.connect(audio.destination)
+  oscillator.start(audio.currentTime)
+  oscillator.stop(audio.currentTime + 0.03)
+}
+
+function playResultSound(tone: 'success' | 'fail') {
+  const audio = getAudioContext()
+  if (!audio) return
+
+  if ('vibrate' in navigator) {
+    navigator.vibrate(tone === 'success' ? [18] : [45, 30, 45])
+  }
+
   const gain = audio.createGain()
   gain.connect(audio.destination)
   gain.gain.setValueAtTime(0.001, audio.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.24, audio.currentTime + 0.02)
-  gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.45)
+  gain.gain.exponentialRampToValueAtTime(tone === 'success' ? 0.42 : 0.36, audio.currentTime + 0.018)
+  gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.72)
 
   if (tone === 'success') {
-    ;[520, 780, 1040].forEach((frequency, index) => {
+    ;[620, 880, 1240, 1480].forEach((frequency, index) => {
       const oscillator = audio.createOscillator()
       oscillator.type = 'triangle'
-      oscillator.frequency.setValueAtTime(frequency, audio.currentTime + index * 0.055)
+      oscillator.frequency.setValueAtTime(frequency, audio.currentTime + index * 0.06)
       oscillator.connect(gain)
-      oscillator.start(audio.currentTime + index * 0.055)
-      oscillator.stop(audio.currentTime + 0.22 + index * 0.055)
+      oscillator.start(audio.currentTime + index * 0.06)
+      oscillator.stop(audio.currentTime + 0.26 + index * 0.06)
     })
     return
   }
 
-  ;[180, 140].forEach((frequency, index) => {
+  ;[190, 135, 100].forEach((frequency, index) => {
     const oscillator = audio.createOscillator()
     oscillator.type = 'sawtooth'
     oscillator.frequency.setValueAtTime(frequency, audio.currentTime + index * 0.12)
-    oscillator.frequency.exponentialRampToValueAtTime(90, audio.currentTime + 0.34 + index * 0.1)
+    oscillator.frequency.exponentialRampToValueAtTime(76, audio.currentTime + 0.42 + index * 0.1)
     oscillator.connect(gain)
     oscillator.start(audio.currentTime + index * 0.1)
-    oscillator.stop(audio.currentTime + 0.42 + index * 0.1)
+    oscillator.stop(audio.currentTime + 0.54 + index * 0.1)
+  })
+}
+
+function playCuteChime() {
+  const audio = getAudioContext()
+  if (!audio) return
+
+  const gain = audio.createGain()
+  gain.connect(audio.destination)
+  gain.gain.setValueAtTime(0.001, audio.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.18, audio.currentTime + 0.02)
+  gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.7)
+
+  ;[660, 880, 1320].forEach((frequency, index) => {
+    const oscillator = audio.createOscillator()
+    oscillator.type = 'sine'
+    oscillator.frequency.setValueAtTime(frequency, audio.currentTime + index * 0.08)
+    oscillator.connect(gain)
+    oscillator.start(audio.currentTime + index * 0.08)
+    oscillator.stop(audio.currentTime + 0.24 + index * 0.08)
+  })
+}
+
+function playBubbleSound() {
+  const audio = getAudioContext()
+  if (!audio) return
+
+  const gain = audio.createGain()
+  gain.connect(audio.destination)
+  gain.gain.setValueAtTime(0.001, audio.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.22, audio.currentTime + 0.015)
+  gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.55)
+
+  ;[300, 420, 560, 740].forEach((frequency, index) => {
+    const oscillator = audio.createOscillator()
+    oscillator.type = 'sine'
+    const start = audio.currentTime + index * 0.075
+    oscillator.frequency.setValueAtTime(frequency, start)
+    oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.45, start + 0.12)
+    oscillator.connect(gain)
+    oscillator.start(start)
+    oscillator.stop(start + 0.16)
   })
 }
 
@@ -544,6 +613,7 @@ export default function App() {
 
     setPackLoading(true)
     setLoadingLinkTitle(link.title || link.url)
+    playCuteChime()
     const fallback = fallbackLearningPack(link)
 
     try {
@@ -599,6 +669,7 @@ export default function App() {
     }
 
     setXpBubbles((current) => [...current, bubble])
+    playBubbleSound()
     window.setTimeout(() => {
       addXp(amount, skill)
       setProgressReceiving(true)
@@ -708,6 +779,7 @@ export default function App() {
   }
 
   function onPaperPointerDown(event: PointerEvent<HTMLElement>) {
+    unlockAudio()
     startXRef.current = getClientPoint(event).x
     event.currentTarget.setPointerCapture(event.pointerId)
   }
@@ -835,7 +907,7 @@ export default function App() {
   }
 
   return (
-    <main className="phone-shell">
+    <main className="phone-shell" onPointerDownCapture={unlockAudio}>
       <header className="app-header">
         <div>
           <span className="brand">Gripd.</span>
@@ -1000,21 +1072,13 @@ function LoadingMascot({ title }: { title: string }) {
   return (
     <article className="loading-mascot-card" aria-live="polite">
       <div className="mascot-scene" aria-hidden="true">
-        <div className="mascot">
-          <span className="mascot-hair" />
-          <span className="mascot-glasses left" />
-          <span className="mascot-glasses right" />
-          <span className="mascot-eye left" />
-          <span className="mascot-eye right" />
-          <span className="mascot-mouth" />
-          <span className="mascot-laptop">π</span>
-        </div>
+        <img className="mascot-image" src="/mascot.png" alt="" />
         <span className="fetch-orbit one">Exa</span>
         <span className="fetch-orbit two">AI</span>
         <span className="fetch-orbit three">XP</span>
       </div>
       <span className="eyebrow">Fetching paper details</span>
-      <h2>Nerd mascot is reading it for you</h2>
+      <h2>Nerdy study buddy is reading it for you</h2>
       <p>{title ? `Building a podcast, questions, graph, and system challenge from ${title}.` : 'Building your commute session.'}</p>
       <div className="loading-steps">
         <span>Exa fetch</span>
@@ -1198,7 +1262,7 @@ function PaperMode({
       </article>
 
       {!result && (
-        <div className="swipe-hint">
+        <div className="swipe-hint" aria-label="Swipe directions">
           <span>← {paper.left}</span>
           <span>{paper.right} →</span>
         </div>

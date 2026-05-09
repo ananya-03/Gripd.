@@ -230,6 +230,29 @@ function sentenceFrom(text: string, fallback: string) {
   return normalizeWhitespace(text).split(/(?<=[.!?])\s+/).find((sentence) => sentence.length > 70) || fallback
 }
 
+function shortText(value: string, max = 96) {
+  const normalized = normalizeWhitespace(value)
+  if (normalized.length <= max) return normalized
+  return `${normalized.slice(0, max - 1).trim()}…`
+}
+
+function layoutGraphNodes(nodes: any[]) {
+  const positions = [
+    [62, 82],
+    [286, 76],
+    [306, 220],
+    [82, 228],
+    [188, 318],
+    [188, 168],
+  ]
+
+  return nodes.map((node, index) => ({
+    ...node,
+    x: positions[index % positions.length][0],
+    y: positions[index % positions.length][1],
+  }))
+}
+
 function normalizeLearningPack(value: any, source: SourceContent, url: string) {
   const fallback = buildHeuristicLearningPack(source, url)
 
@@ -254,11 +277,11 @@ function normalizeLearningPack(value: any, source: SourceContent, url: string) {
         }))
       : fallback.paperRounds,
     graphNodes: Array.isArray(value?.graphNodes) && value.graphNodes.length >= 4
-      ? value.graphNodes.slice(0, 6).map((node: any, index: number) => ({
+      ? layoutGraphNodes(value.graphNodes.slice(0, 6)).map((node: any, index: number) => ({
           id: String(node?.id || `node-${index}`).replace(/[^a-z0-9_-]/gi, '-').toLowerCase(),
-          label: String(node?.label || `Concept ${index + 1}`).slice(0, 24),
-          x: Number(node?.x || [62, 238, 292, 108, 198, 300][index] || 180),
-          y: Number(node?.y || [82, 58, 176, 210, 310, 300][index] || 180),
+          label: shortText(String(node?.label || `Concept ${index + 1}`), 18),
+          x: Number(node?.x),
+          y: Number(node?.y),
           skill: ['systems', 'research', 'concepts', 'voice'].includes(node?.skill) ? node.skill : 'concepts',
           detail: String(node?.detail || 'Generated from the saved link.'),
         }))
@@ -272,7 +295,7 @@ function normalizeLearningPack(value: any, source: SourceContent, url: string) {
             success: String(challenge?.success || 'Correct.'),
           }))
         : fallback.graphChallenges,
-    systemPrompt: String(value?.systemPrompt || fallback.systemPrompt),
+    systemPrompt: shortText(String(value?.systemPrompt || fallback.systemPrompt), 86),
     sourceProvider: source.provider,
     generatedBy: value ? 'openai' : 'heuristic',
   }
@@ -331,10 +354,10 @@ Return JSON with exactly:
   "summary": string, // punchy 2-3 sentence quick summary
   "podcastSegments": [{"speaker":"Host"|"Analyst","line": string}], // 4-6 lines, no speaker labels in line
   "paperRounds": [{"title": string, "left": string, "right": string, "claim": string, "winner":"left"|"right", "reason": string}], // 4-5 swipe questions after listening
-  "graphNodes": [{"id": string, "label": string, "x": number, "y": number, "skill":"systems"|"research"|"concepts"|"voice", "detail": string}], // 5 nodes, ids lowercase
+  "graphNodes": [{"id": string, "label": string, "x": number, "y": number, "skill":"systems"|"research"|"concepts"|"voice", "detail": string}], // 5 nodes, ids lowercase, label max 3 words
   "graphEdges": [[string,string]],
   "graphChallenges": [{"prompt": string, "answerId": string, "success": string}], // use graph node ids
-  "systemPrompt": string // architecture challenge based on this paper/link
+  "systemPrompt": string // max 12 words, architecture challenge based on this paper/link
 }`,
     }),
   })
@@ -356,7 +379,7 @@ function buildHeuristicLearningPack(source: SourceContent, url: string) {
   const nodes: GraphNode[] = [
     {
       id: 'main',
-      label: labelFromKeyword(primary),
+      label: shortText(labelFromKeyword(primary), 18),
       x: 62,
       y: 82,
       skill: 'research',
@@ -364,33 +387,33 @@ function buildHeuristicLearningPack(source: SourceContent, url: string) {
     },
     {
       id: 'mechanism',
-      label: labelFromKeyword(secondary),
-      x: 238,
-      y: 58,
+      label: shortText(labelFromKeyword(secondary), 18),
+      x: 286,
+      y: 76,
       skill: 'research',
       detail: `${labelFromKeyword(secondary)} describes how the paper or repo appears to get its result.`,
     },
     {
       id: 'tradeoff',
-      label: labelFromKeyword(tertiary),
-      x: 292,
-      y: 176,
+      label: shortText(labelFromKeyword(tertiary), 18),
+      x: 306,
+      y: 220,
       skill: 'systems',
       detail: `${labelFromKeyword(tertiary)} is the design tradeoff to watch when building from this idea.`,
     },
     {
       id: 'voice',
       label: 'Voice Brief',
-      x: 108,
-      y: 210,
+      x: 82,
+      y: 228,
       skill: 'voice',
       detail: 'This node turns the saved content into a hands-free podcast explanation.',
     },
     {
       id: 'build',
       label: 'Build Check',
-      x: 198,
-      y: 310,
+      x: 188,
+      y: 318,
       skill: 'concepts',
       detail: 'This node checks whether you can apply the idea after listening.',
     },
@@ -478,7 +501,7 @@ function buildHeuristicLearningPack(source: SourceContent, url: string) {
       ['voice', 'build'],
     ],
     graphChallenges,
-    systemPrompt: `Design a flow that turns ${source.title} into cached podcast audio and quiz cards for a commute.`,
+    systemPrompt: shortText(`Build cached commute games for ${source.title}`, 86),
     sourceProvider: source.provider,
     generatedBy: 'heuristic',
   }
