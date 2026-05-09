@@ -8,6 +8,11 @@
   A mobile-first learning game that turns saved AI papers into a podcast, swipe cards, concept graphs, and tiny system-design challenges for your commute.
 </p>
 
+<p align="center">
+  <strong>Live demo:</strong>
+  <a href="https://gripd-kb5xcy4i9-ananyas-projects-db7351ca.vercel.app">gripd-kb5xcy4i9-ananyas-projects-db7351ca.vercel.app</a>
+</p>
+
 ---
 
 ## Problem Statement
