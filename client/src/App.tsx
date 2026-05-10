@@ -52,6 +52,7 @@ declare global {
 }
 
 let sharedAudioContext: AudioContext | null = null
+let audioUnlocked = false
 
 type GraphNode = {
   id: string
@@ -349,6 +350,8 @@ function getAudioContext() {
 }
 
 function unlockAudio() {
+  if (audioUnlocked && sharedAudioContext?.state === 'running') return
+
   const audio = getAudioContext()
   if (!audio) return
 
@@ -359,6 +362,7 @@ function unlockAudio() {
   gain.connect(audio.destination)
   oscillator.start(audio.currentTime)
   oscillator.stop(audio.currentTime + 0.03)
+  audioUnlocked = true
 }
 
 function playResultSound(tone: 'success' | 'fail') {
@@ -544,6 +548,8 @@ export default function App() {
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const progressRef = useRef<HTMLElement | null>(null)
   const startXRef = useRef(0)
+  const cardOffsetRef = useRef(0)
+  const cardFrameRef = useRef<number | null>(null)
 
   const availableLinks = links
   const hasLearningPack = Boolean(learningPack.url)
@@ -763,46 +769,66 @@ export default function App() {
     if (paperResult) return
     const correct = choice === currentPaper.winner
     const tone = correct ? 'success' : 'fail'
+    playResultSound(tone)
     setPaperResult({
       label: correct ? 'Correct' : 'Booo',
       tone,
       reason: currentPaper.reason,
     })
-    playResultSound(tone)
     addXp(correct ? 30 : 12, 'research')
   }
 
   function nextPaper() {
     setPaperIndex((current) => (current + 1) % currentPaperRounds.length)
     setPaperResult(null)
+    cardOffsetRef.current = 0
     setCardOffset(0)
   }
 
   function onPaperPointerDown(event: PointerEvent<HTMLElement>) {
     unlockAudio()
     startXRef.current = getClientPoint(event).x
+    cardOffsetRef.current = 0
+    if (cardFrameRef.current) window.cancelAnimationFrame(cardFrameRef.current)
+    cardFrameRef.current = null
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   function onPaperPointerMove(event: PointerEvent<HTMLElement>) {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
-    setCardOffset(getClientPoint(event).x - startXRef.current)
+    cardOffsetRef.current = getClientPoint(event).x - startXRef.current
+    if (cardFrameRef.current) return
+
+    cardFrameRef.current = window.requestAnimationFrame(() => {
+      setCardOffset(cardOffsetRef.current)
+      cardFrameRef.current = null
+    })
   }
 
   function onPaperPointerUp(event: PointerEvent<HTMLElement>) {
+    const finalOffset = getClientPoint(event).x - startXRef.current
+    const target = event.currentTarget
+    cardOffsetRef.current = finalOffset
+    if (cardFrameRef.current) {
+      window.cancelAnimationFrame(cardFrameRef.current)
+      cardFrameRef.current = null
+    }
+
     if (paperResult) {
-      if (Math.abs(cardOffset) > 60) nextPaper()
+      if (Math.abs(finalOffset) > 60) nextPaper()
+      cardOffsetRef.current = 0
       setCardOffset(0)
-      event.currentTarget.releasePointerCapture(event.pointerId)
+      if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId)
       return
     }
 
-    if (Math.abs(cardOffset) > 80) {
-      answerPaper(cardOffset > 0 ? 'right' : 'left')
+    if (Math.abs(finalOffset) > 80) {
+      answerPaper(finalOffset > 0 ? 'right' : 'left')
     }
 
+    cardOffsetRef.current = 0
     setCardOffset(0)
-    event.currentTarget.releasePointerCapture(event.pointerId)
+    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId)
   }
 
   function selectNode(node: GraphNode) {
