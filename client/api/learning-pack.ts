@@ -1,3 +1,7 @@
+declare const process: {
+  env: Record<string, string | undefined>
+}
+
 type Skill = 'systems' | 'research' | 'concepts' | 'voice'
 
 type SourceContent = {
