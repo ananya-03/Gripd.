@@ -10,7 +10,7 @@
 
 <p align="center">
   <strong>Live demo:</strong>
-  <a href="https://gripd-kb5xcy4i9-ananyas-projects-db7351ca.vercel.app">gripd-kb5xcy4i9-ananyas-projects-db7351ca.vercel.app</a>
+  <a href="https://gripd.vercel.app">gripd.vercel.app</a>
 </p>
 
 ---

@@ -472,6 +472,38 @@ function makePodcast(link: SavedLink): PodcastSegment[] {
   ]
 }
 
+async function playElevenLabsText(text: string, voiceId: string) {
+  const response = await fetch(`/api/elevenlabs/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text,
+      model_id: 'eleven_multilingual_v2',
+      voice_settings: {
+        stability: 0.42,
+        similarity_boost: 0.82,
+        style: 0.35,
+        use_speaker_boost: true,
+      },
+    }),
+  })
+
+  if (!response.ok) return false
+
+  const blob = await response.blob()
+  const audioUrl = URL.createObjectURL(blob)
+  const audio = new Audio(audioUrl)
+  await new Promise<void>((resolve, reject) => {
+    audio.onended = () => resolve()
+    audio.onerror = () => reject(new Error('Audio playback failed'))
+    audio.play().catch(reject)
+  })
+  URL.revokeObjectURL(audioUrl)
+  return true
+}
+
 async function playElevenLabsPodcast(segments: PodcastSegment[]) {
   const hostVoiceId = import.meta.env.VITE_ELEVENLABS_VOICE_ANANYA_ID || import.meta.env.VITE_ELEVENLABS_VOICE_ID
   const analystVoiceId = import.meta.env.VITE_ELEVENLABS_VOICE_SNEHA_ID || hostVoiceId
@@ -500,12 +532,14 @@ async function playElevenLabsPodcast(segments: PodcastSegment[]) {
     if (!response.ok) return false
 
     const blob = await response.blob()
-    const audio = new Audio(URL.createObjectURL(blob))
+    const audioUrl = URL.createObjectURL(blob)
+    const audio = new Audio(audioUrl)
     await new Promise<void>((resolve, reject) => {
       audio.onended = () => resolve()
       audio.onerror = () => reject(new Error('Audio playback failed'))
       audio.play().catch(reject)
     })
+    URL.revokeObjectURL(audioUrl)
   }
   return true
 }
@@ -754,9 +788,25 @@ export default function App() {
     addXp(15, 'voice')
   }
 
-  function playQuickBrief() {
-    setMessage('Quick brief running.')
+  async function playQuickBrief() {
+    const ananyaVoiceId = import.meta.env.VITE_ELEVENLABS_VOICE_ANANYA_ID || import.meta.env.VITE_ELEVENLABS_VOICE_ID
+
+    setMessage('Quick brief running with Ananya voice if configured.')
+    if (ananyaVoiceId) {
+      try {
+        const playedClone = await playElevenLabsText(voiceScript, ananyaVoiceId)
+        if (playedClone) {
+          setMessage('Quick brief running with Ananya voice.')
+          addXp(8, 'voice')
+          return
+        }
+      } catch {
+        setMessage('Ananya voice failed, falling back to browser TTS.')
+      }
+    }
+
     speak(voiceScript)
+    setMessage('Quick brief running with browser TTS fallback.')
     addXp(8, 'voice')
   }
 

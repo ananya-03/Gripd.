@@ -348,6 +348,18 @@ function parseJsonObject(text: string) {
   }
 }
 
+function readUrlFromBody(body: any) {
+  if (typeof body === 'string') {
+    try {
+      return JSON.parse(body)?.url
+    } catch {
+      return undefined
+    }
+  }
+
+  return body?.url
+}
+
 async function generateOpenAILearningPack(source: SourceContent, url: string, apiKey: string, model: string) {
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -441,7 +453,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const url = req.body?.url
+    const url = readUrlFromBody(req.body)
     if (!url || typeof url !== 'string') {
       res.status(400).json({ error: 'Missing url' })
       return
@@ -468,6 +480,7 @@ export default async function handler(req: any, res: any) {
 
     res.status(200).json(normalizeLearningPack(null, source, url))
   } catch (error) {
+    console.error('learning-pack failed', error)
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to generate learning pack' })
   }
 }
